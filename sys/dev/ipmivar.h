@@ -115,6 +115,10 @@ struct ipmi_softc {
 	struct taskq		*sc_cmd_taskq;
 	struct mutex		sc_cmd_mtx;
 
+	struct ipmi_ioctl {
+		struct rwlock		lock;
+	} sc_ioctl;
+
 	int			sc_wdog_period;
 	struct task		sc_wdog_tickle_task;
 
