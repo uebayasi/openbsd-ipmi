@@ -31,6 +31,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/device.h>
+#include <sys/ioctl.h>
 #include <sys/extent.h>
 #include <sys/timeout.h>
 #include <sys/sensors.h>
@@ -46,6 +47,7 @@
 #include <dev/isa/isavar.h>
 
 #include <dev/ipmivar.h>
+#include <dev/ipmi_linux.h>
 
 struct ipmi_sensor {
 	u_int8_t	*i_sdr;
@@ -1775,6 +1777,7 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 
 	/* lock around read_sensor so that no one messes with the bmc regs */
 	rw_init(&sc->sc_lock, DEVNAME(sc));
+	rw_init(&sc->sc_ioctl.lock, DEVNAME(sc));
 
 	/* setup ticker */
 	sc->sc_retries = 0;
@@ -1819,7 +1822,49 @@ ipmiclose(dev_t dev, int flags, int mode, struct proc *p)
 int
 ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 {
-	return (0);
+	struct ipmi_softc	*sc = ipmilookup(dev);
+	int			rc = 0;
+
+	if (sc == NULL)
+		return (ENXIO);
+
+#ifdef IPMICTL_SEND_COMMAND_32
+	switch (cmd) {
+	case IPMICTL_SEND_COMMAND_32:
+	case IPMICTL_RECEIVE_MSG_TRUNC_32:
+	case IPMICTL_RECEIVE_MSG_32:
+		break;
+	}
+#endif
+
+	rw_enter_write(&sc->sc_ioctl.lock);
+
+	switch (cmd) {
+#ifdef IPMICTL_SEND_COMMAND_32
+	case IPMICTL_SEND_COMMAND_32:
+#endif
+	case IPMICTL_SEND_COMMAND:
+#ifdef IPMICTL_SEND_COMMAND_32
+	case IPMICTL_RECEIVE_MSG_TRUNC_32:
+	case IPMICTL_RECEIVE_MSG_32:
+#endif
+	case IPMICTL_RECEIVE_MSG_TRUNC:
+	case IPMICTL_RECEIVE_MSG:
+	case IPMICTL_SET_MY_ADDRESS_CMD:
+	case IPMICTL_GET_MY_ADDRESS_CMD:
+	case IPMICTL_SET_MY_LUN_CMD:
+	case IPMICTL_GET_MY_LUN_CMD:
+	case IPMICTL_SET_GETS_EVENTS_CMD:
+	case IPMICTL_REGISTER_FOR_CMD:
+	case IPMICTL_UNREGISTER_FOR_CMD:
+		rc = EOPNOTSUPP;
+		goto done;
+	default:
+		break;
+	}
+done:
+	rw_exit_write(&sc->sc_ioctl.lock);
+	return (rc);
 }
 
 #define		MIN_PERIOD	10
