@@ -183,6 +183,7 @@ cdev_decl(pci);
 #include "pppx.h"
 #include "fuse.h"
 #include "pvbus.h"
+#include "ipmi.h"
 
 struct cdevsw	cdevsw[] =
 {
@@ -294,6 +295,7 @@ struct cdevsw	cdevsw[] =
 	cdev_tun_init(NTUN,tap),	/* 93: Ethernet network tunnel */
 	cdev_tty_init(NVIOCON,viocon),  /* 94: virtio console */
 	cdev_pvbus_init(NPVBUS,pvbus),	/* 95: pvbus(4) control interface */
+	cdev_ipmi_init(NIPMI,ipmi),	/* 96: ipmi */
 };
 int	nchrdev = nitems(cdevsw);
 
