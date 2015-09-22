@@ -1,0 +1,58 @@
+Index: sysutils/ipmitool/Makefile
+===================================================================
+RCS file: /cvs/ports/sysutils/ipmitool/Makefile,v
+retrieving revision 1.16
+diff -u -p -r1.16 Makefile
+--- sysutils/ipmitool/Makefile	30 Jul 2015 21:51:22 -0000	1.16
++++ sysutils/ipmitool/Makefile	22 Sep 2015 04:57:33 -0000
+@@ -3,7 +3,7 @@
+ COMMENT=		manage and configure devices that support IPMI
+ 
+ DISTNAME=		ipmitool-1.8.15
+-REVISION=		2
++REVISION=		3
+ CATEGORIES=		sysutils
+ 
+ HOMEPAGE=		http://ipmitool.sourceforge.net/
+@@ -21,8 +21,10 @@ SEPARATE_BUILD=		Yes
+ CONFIGURE_STYLE=	autoconf
+ AUTOCONF_VERSION=	2.69
+ CONFIGURE_ARGS+=	--disable-intf-free \
+-			--disable-intf-open \
+ 			--disable-intf-imb
++.if ${MACHINE_ARCH} != "amd64"
++CONFIGURE_ARGS+=	--disable-intf-open
++.endif
+ 
+ post-install:
+ 	${INSTALL_DATA_DIR} ${PREFIX}/share/ipmitool/
+Index: sysutils/ipmitool/patches/patch-src_plugins_open_open_h
+===================================================================
+RCS file: sysutils/ipmitool/patches/patch-src_plugins_open_open_h
+diff -N sysutils/ipmitool/patches/patch-src_plugins_open_open_h
+--- /dev/null	1 Jan 1970 00:00:00 -0000
++++ sysutils/ipmitool/patches/patch-src_plugins_open_open_h	22 Sep 2015 04:57:33 -0000
+@@ -0,0 +1,23 @@
++$OpenBSD$
++--- src/plugins/open/open.h.orig	Fri Mar 28 21:36:21 2014
+++++ src/plugins/open/open.h	Tue Sep 22 13:54:15 2015
++@@ -94,13 +94,13 @@ struct ipmi_ipmb_addr {
++ #define IPMI_IOC_MAGIC			'i'
++ #define IPMICTL_RECEIVE_MSG_TRUNC	_IOWR(IPMI_IOC_MAGIC, 11, struct ipmi_recv)
++ #define IPMICTL_RECEIVE_MSG		_IOWR(IPMI_IOC_MAGIC, 12, struct ipmi_recv)
++-#define IPMICTL_SEND_COMMAND		_IOR(IPMI_IOC_MAGIC, 13, struct ipmi_req)
++-#define IPMICTL_REGISTER_FOR_CMD	_IOR(IPMI_IOC_MAGIC, 14, struct ipmi_cmdspec)
++-#define IPMICTL_UNREGISTER_FOR_CMD	_IOR(IPMI_IOC_MAGIC, 15, struct ipmi_cmdspec)
++-#define IPMICTL_SET_GETS_EVENTS_CMD	_IOR(IPMI_IOC_MAGIC, 16, int)
++-#define IPMICTL_SET_MY_ADDRESS_CMD	_IOR(IPMI_IOC_MAGIC, 17, unsigned int)
+++#define IPMICTL_SEND_COMMAND		_IOW(IPMI_IOC_MAGIC, 13, struct ipmi_req)
+++#define IPMICTL_REGISTER_FOR_CMD	_IOW(IPMI_IOC_MAGIC, 14, struct ipmi_cmdspec)
+++#define IPMICTL_UNREGISTER_FOR_CMD	_IOW(IPMI_IOC_MAGIC, 15, struct ipmi_cmdspec)
+++#define IPMICTL_SET_GETS_EVENTS_CMD	_IOW(IPMI_IOC_MAGIC, 16, int)
+++#define IPMICTL_SET_MY_ADDRESS_CMD	_IOW(IPMI_IOC_MAGIC, 17, unsigned int)
++ #define IPMICTL_GET_MY_ADDRESS_CMD	_IOR(IPMI_IOC_MAGIC, 18, unsigned int)
++-#define IPMICTL_SET_MY_LUN_CMD		_IOR(IPMI_IOC_MAGIC, 19, unsigned int)
+++#define IPMICTL_SET_MY_LUN_CMD		_IOW(IPMI_IOC_MAGIC, 19, unsigned int)
++ #define IPMICTL_GET_MY_LUN_CMD		_IOR(IPMI_IOC_MAGIC, 20, unsigned int)
++ 
++ #endif /*IPMI_OPENIPMI_H*/
