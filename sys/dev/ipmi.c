@@ -166,6 +166,11 @@ int	ipmi_intr(void *);
 int	ipmi_match(struct device *, void *, void *);
 void	ipmi_attach(struct device *, struct device *, void *);
 int	ipmi_activate(struct device *, int);
+struct ipmi_softc *ipmilookup(dev_t dev);
+
+int	ipmiopen(dev_t, int, int, struct proc *);
+int	ipmiclose(dev_t, int, int, struct proc *);
+int	ipmiioctl(dev_t, u_long, caddr_t, int, struct proc *);
 
 long	ipow(long, int);
 long	ipmi_convert(u_int8_t, struct sdrtype1 *, long);
@@ -1790,6 +1795,30 @@ ipmi_activate(struct device *self, int act)
 		break;
 	}
 
+	return (0);
+}
+
+struct ipmi_softc *
+ipmilookup(dev_t dev)
+{
+	return (struct ipmi_softc *)device_lookup(&ipmi_cd, minor(dev));
+}
+
+int
+ipmiopen(dev_t dev, int flags, int mode, struct proc *p)
+{
+	return (0);
+}
+
+int
+ipmiclose(dev_t dev, int flags, int mode, struct proc *p)
+{
+	return (0);
+}
+
+int
+ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
+{
 	return (0);
 }
 
