@@ -176,6 +176,7 @@ cdev_decl(pci);
 #include "vscsi.h"
 #include "pppx.h"
 #include "fuse.h"
+#include "ipmi.h"
 
 struct cdevsw	cdevsw[] =
 {
@@ -286,6 +287,7 @@ struct cdevsw	cdevsw[] =
 	cdev_pppx_init(NPPPX,pppx),     /* 92: pppx */
 	cdev_fuse_init(NFUSE,fuse),	/* 93: fuse */ 
 	cdev_tun_init(NTUN,tap),	/* 94: Ethernet network tunnel */
+	cdev_ipmi_init(NIPMI,ipmi),	/* 95: ipmi */
 };
 int	nchrdev = nitems(cdevsw);
 

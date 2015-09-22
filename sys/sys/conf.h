@@ -467,6 +467,13 @@ extern struct cdevsw cdevsw[];
 
 #endif
 
+/* open, close, read, write, poll, ioctl, nokqfilter */
+#define cdev_ipmi_init(c,n) { \
+	dev_init(c,n,open), dev_init(c,n,close), (dev_type_read((*))) enodev, \
+	(dev_type_write((*))) enodev, dev_init(c,n,ioctl), \
+	(dev_type_stop((*))) enodev, 0, (dev_type_poll((*))) enodev, \
+	(dev_type_mmap((*))) enodev, 0 }
+
 /*
  * Line discipline switch table
  */
@@ -597,6 +604,7 @@ cdev_decl(hotplug);
 cdev_decl(gpio);
 cdev_decl(amdmsr);
 cdev_decl(fuse);
+cdev_decl(ipmi);
 
 #endif
 
