@@ -35,6 +35,8 @@
 #include <sys/sensors.h>
 #include <sys/task.h>
 
+#include <dev/ipmi_linux.h>
+
 #define IPMI_IF_KCS		1
 #define IPMI_IF_SMIC		2
 #define IPMI_IF_BT		3
@@ -42,8 +44,6 @@
 #define IPMI_IF_KCS_NREGS	2
 #define IPMI_IF_SMIC_NREGS	3
 #define IPMI_IF_BT_NREGS	3
-
-#define	IPMI_MAX_RX		1024	/* XXX ipmi_linux.h */
 
 struct ipmi_thread;
 struct ipmi_softc;
