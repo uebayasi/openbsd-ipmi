@@ -30,7 +30,6 @@
 #ifndef _IPMIVAR_H_
 #define _IPMIVAR_H_
 
-#include <sys/timeout.h>
 #include <sys/rwlock.h>
 #include <sys/sensors.h>
 #include <sys/task.h>
@@ -128,11 +127,6 @@ struct ipmi_softc {
 	struct task		sc_wdog_tickle_task;
 
 	struct ipmi_thread	*sc_thread;
-
-	struct timeout		sc_timeout;
-	int			sc_max_retries;
-	int			sc_retries;
-	int			sc_wakeup;
 
 	struct rwlock		sc_lock;
 
