@@ -34,7 +34,6 @@
 #include <sys/device.h>
 #include <sys/ioctl.h>
 #include <sys/extent.h>
-#include <sys/timeout.h>
 #include <sys/sensors.h>
 #include <sys/malloc.h>
 #include <sys/kthread.h>
@@ -143,8 +142,6 @@ SLIST_HEAD(ipmi_sensors_head, ipmi_sensor);
 struct ipmi_sensors_head ipmi_sensor_list =
     SLIST_HEAD_INITIALIZER(ipmi_sensor_list);
 
-struct timeout ipmi_timeout;
-
 void	dumpb(const char *, int, const u_int8_t *);
 
 int	read_sensor(struct ipmi_softc *, struct ipmi_sensor *);
@@ -183,8 +180,6 @@ void	ipmi_sensor_name(char *, int, u_int8_t, u_int8_t *);
 u_int8_t bmc_read(struct ipmi_softc *, int);
 void	bmc_write(struct ipmi_softc *, int, u_int8_t);
 int	bmc_io_wait(struct ipmi_softc *);
-int	bmc_io_wait_cold(struct ipmi_softc *);
-void	_bmc_io_wait(void *);
 
 void	bt_buildmsg(struct ipmi_cmd *);
 void	cmn_buildmsg(struct ipmi_cmd *);
@@ -275,58 +270,8 @@ bmc_write(struct ipmi_softc *sc, int offset, u_int8_t val)
 	    offset * sc->sc_if_iospacing, val);
 }
 
-void
-_bmc_io_wait(void *arg)
-{
-	struct ipmi_softc	*sc = arg;
-	struct ipmi_iowait	*a = sc->sc_cmd_iowait;
-
-	*a->v = bmc_read(sc, a->offset);
-	if ((*a->v & a->mask) == a->value) {
-		sc->sc_wakeup = 0;
-		wakeup(sc);
-		return;
-	}
-
-	if (++sc->sc_retries > sc->sc_max_retries) {
-		sc->sc_wakeup = 0;
-		wakeup(sc);
-		return;
-	}
-
-	timeout_add(&sc->sc_timeout, 1);
-}
-
 int
 bmc_io_wait(struct ipmi_softc *sc)
-{
-	struct ipmi_iowait	*a = sc->sc_cmd_iowait;
-	volatile u_int8_t	v;
-
-	if (cold)
-		return (bmc_io_wait_cold(sc));
-
-	sc->sc_retries = 0;
-	sc->sc_wakeup = 1;
-
-	a->v = &v;
-
-	_bmc_io_wait(sc);
-
-	while (sc->sc_wakeup)
-		tsleep(sc, PWAIT, a->lbl, 0);
-
-	if (sc->sc_retries > sc->sc_max_retries) {
-		dbg_printf(1, "%s: bmc_io_wait fails : v=%.2x m=%.2x "
-		    "b=%.2x %s\n", DEVNAME(sc), v, a->mask, a->value, a->lbl);
-		return (-1);
-	}
-
-	return (v);
-}
-
-int
-bmc_io_wait_cold(struct ipmi_softc *sc)
 {
 	struct ipmi_iowait	*a = sc->sc_cmd_iowait;
 	volatile u_int8_t	v;
@@ -340,7 +285,7 @@ bmc_io_wait_cold(struct ipmi_softc *sc)
 		delay(1);
 	}
 
-	dbg_printf(1, "%s: bmc_io_wait_cold fails : *v=%.2x m=%.2x b=%.2x %s\n",
+	dbg_printf(1, "%s: bmc_io_wait fails : *v=%.2x m=%.2x b=%.2x %s\n",
 	    DEVNAME(sc), v, a->mask, a->value, a->lbl);
 	return (-1);
 
@@ -1090,11 +1035,7 @@ void
 ipmi_delay(struct ipmi_softc *sc, int period)
 {
 	/* period is in 10 ms increments */
-	if (cold)
-		delay(period * 10000);
-	else
-		while (tsleep(sc, PWAIT, "ipmicmd", period) != EWOULDBLOCK)
-			continue;
+	delay(period * 10000);
 }
 
 void
@@ -1809,12 +1750,6 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 	sc->sc_ioctl.req.msgid = -1;
 	c->c_sc = sc;
 	c->c_ccode = -1;
-
-	/* setup ticker */
-	sc->sc_retries = 0;
-	sc->sc_wakeup = 0;
-	sc->sc_max_retries = 50; /* 50 * 1/100 = 0.5 seconds max */
-	timeout_set(&sc->sc_timeout, _bmc_io_wait, sc);
 
 	sc->sc_cmd = NULL;
 	sc->sc_cmd_iowait = NULL;
