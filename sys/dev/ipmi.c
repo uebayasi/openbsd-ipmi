@@ -1675,6 +1675,7 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 	struct ipmi_softc	*sc = (void *) self;
 	struct ipmi_attach_args *ia = aux;
 	struct ipmi_cmd		*c = &sc->sc_ioctl.cmd;
+	int			i;
 
 	/* Map registers */
 	ipmi_map_regs(sc, ia);
@@ -1703,7 +1704,9 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 
 	/* Setup Watchdog timer */
 	sc->sc_wdog_period = 0;
-	task_set(&sc->sc_wdog_tickle_task, ipmi_watchdog_tickle, sc);
+	for (i = 0; i < IPMI_WDOG_TICKLE_NTASKS; i++)
+		task_set(&sc->sc_wdog_tickle_tasks[i], ipmi_watchdog_tickle, sc);
+	sc->sc_wdog_tickle_cnt = 0;
 	wdog_register(ipmi_watchdog, sc);
 
 	rw_init(&sc->sc_ioctl.lock, DEVNAME(sc));
@@ -1861,7 +1864,8 @@ ipmi_watchdog(void *arg, int period)
 			struct task *t;
 			int res;
 
-			t = &sc->sc_wdog_tickle_task;
+			t = &sc->sc_wdog_tickle_tasks[
+			    sc->sc_wdog_tickle_cnt++ % IPMI_WDOG_TICKLE_NTASKS];
 			res = task_del(systq, t);
 			KASSERT(res == 0);
 			res = task_add(systq, t);
