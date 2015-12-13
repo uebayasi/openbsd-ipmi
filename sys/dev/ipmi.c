@@ -1703,7 +1703,7 @@ ipmi_probe(void *aux)
 int
 ipmi_match(struct device *parent, void *match, void *aux)
 {
-	struct ipmi_softc	sc;
+	struct ipmi_softc	*sc;
 	struct ipmi_attach_args *ia = aux;
 	struct cfdata		*cf = match;
 	u_int8_t		cmd[32];
@@ -1713,16 +1713,17 @@ ipmi_match(struct device *parent, void *match, void *aux)
 		return (0);
 
 	/* XXX local softc is wrong wrong wrong */
-	mtx_init(&sc.sc_cmd_mtx, IPL_NONE);
-	strlcpy(sc.sc_dev.dv_xname, "ipmi0", sizeof(sc.sc_dev.dv_xname));
+	sc = malloc(sizeof(*sc), M_TEMP, M_NOWAIT | M_ZERO);
+	mtx_init(&sc->sc_cmd_mtx, IPL_NONE);
+	strlcpy(sc->sc_dev.dv_xname, "ipmi0", sizeof(sc->sc_dev.dv_xname));
 
 	/* Map registers */
-	if (ipmi_map_regs(&sc, ia) == 0) {
-		sc.sc_if->probe(&sc);
+	if (ipmi_map_regs(sc, ia) == 0) {
+		sc->sc_if->probe(sc);
 
 		/* Identify BMC device early to detect lying bios */
 		struct ipmi_cmd c;
-		c.c_sc = &sc;
+		c.c_sc = sc;
 		c.c_rssa = BMC_SA;
 		c.c_rslun = BMC_LUN;
 		c.c_netfn = APP_NETFN;
@@ -1735,8 +1736,10 @@ ipmi_match(struct device *parent, void *match, void *aux)
 
 		dbg_dump(1, "bmc data", c.c_rxlen, cmd);
 		rv = 1; /* GETID worked, we got IPMI */
-		ipmi_unmap_regs(&sc);
+		ipmi_unmap_regs(sc);
 	}
+
+	free(sc, M_TEMP, sizeof(*sc));
 
 	return (rv);
 }
