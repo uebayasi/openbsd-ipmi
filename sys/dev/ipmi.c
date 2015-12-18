@@ -1923,10 +1923,19 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 		rc = copyout(c->c_data, recv->msg.data + 1, c->c_rxlen);
 		goto reset;
 	case IPMICTL_SET_MY_ADDRESS_CMD:
+		c->c_rssa = *(int *)data;
+		break;
 	case IPMICTL_GET_MY_ADDRESS_CMD:
+		*(int *)data = c->c_rssa;
+		break;
 	case IPMICTL_SET_MY_LUN_CMD:
+		c->c_rslun = *(int *)data;
+		break;
 	case IPMICTL_GET_MY_LUN_CMD:
+		*(int *)data = c->c_rslun;
+		break;
 	case IPMICTL_SET_GETS_EVENTS_CMD:
+		break;
 	case IPMICTL_REGISTER_FOR_CMD:
 	case IPMICTL_UNREGISTER_FOR_CMD:
 	default:
