@@ -352,7 +352,9 @@ bmc_io_wait_cold(struct ipmi_softc *sc, int offset, u_int8_t mask,
 
 }
 
-#define NETFN_LUN(nf,ln) (((nf) << 2) | ((ln) & 0x3))
+#define RSSA_MASK 0xff
+#define LUN_MASK 0x3
+#define NETFN_LUN(nf,ln) (((nf) << 2) | ((ln) & LUN_MASK))
 
 /*
  * BT interface
@@ -1835,6 +1837,7 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 	struct ipmi_req		*req = (struct ipmi_req *)data;
 	struct ipmi_recv	*recv = (struct ipmi_recv *)data;
 	struct ipmi_cmd		*c = &sc->sc_ioctl.cmd;
+	int			iv;
 	int			len;
 	u_char			ccode;
 	int			rc = 0;
@@ -1905,10 +1908,29 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 		rc = copyout(c->c_data, recv->msg.data + 1, c->c_rxlen);
 		goto reset;
 	case IPMICTL_SET_MY_ADDRESS_CMD:
+		iv = *(int *)data;
+		if (iv < 0 || iv > RSSA_MASK) {
+			rc = EINVAL;
+			goto reset;
+		}
+		c->c_rssa = iv;
+		break;
 	case IPMICTL_GET_MY_ADDRESS_CMD:
+		*(int *)data = c->c_rssa;
+		break;
 	case IPMICTL_SET_MY_LUN_CMD:
+		iv = *(int *)data;
+		if (iv < 0 || iv > LUN_MASK) {
+			rc = EINVAL;
+			goto reset;
+		}
+		c->c_rslun = iv;
+		break;
 	case IPMICTL_GET_MY_LUN_CMD:
+		*(int *)data = c->c_rslun;
+		break;
 	case IPMICTL_SET_GETS_EVENTS_CMD:
+		break;
 	case IPMICTL_REGISTER_FOR_CMD:
 	case IPMICTL_UNREGISTER_FOR_CMD:
 	default:
