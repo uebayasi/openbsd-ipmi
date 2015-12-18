@@ -126,8 +126,6 @@ struct ipmi_softc {
 
 	struct ipmi_thread	*sc_thread;
 
-	struct rwlock		sc_lock;
-
 	struct ipmi_sensor	*current_sensor;
 	struct ksensordev	sc_sensordev;
 };
