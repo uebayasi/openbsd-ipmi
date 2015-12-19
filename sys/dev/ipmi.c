@@ -182,9 +182,8 @@ void	ipmi_sensor_name(char *, int, u_int8_t, u_int8_t *);
 /* BMC Helper Functions */
 u_int8_t bmc_read(struct ipmi_softc *, int);
 void	bmc_write(struct ipmi_softc *, int, u_int8_t);
-int	bmc_io_wait(struct ipmi_softc *, int, u_int8_t, u_int8_t, const char *);
-int	bmc_io_wait_cold(struct ipmi_softc *, int, u_int8_t, u_int8_t,
-    const char *);
+int	bmc_io_wait(struct ipmi_softc *);
+int	bmc_io_wait_cold(struct ipmi_softc *);
 void	_bmc_io_wait(void *);
 
 void	bt_buildmsg(struct ipmi_cmd *);
@@ -280,7 +279,7 @@ void
 _bmc_io_wait(void *arg)
 {
 	struct ipmi_softc	*sc = arg;
-	struct ipmi_bmc_args	*a = sc->sc_iowait_args;
+	struct ipmi_iowait	*a = sc->sc_cmd_iowait;
 
 	*a->v = bmc_read(sc, a->offset);
 	if ((*a->v & a->mask) == a->value) {
@@ -299,32 +298,27 @@ _bmc_io_wait(void *arg)
 }
 
 int
-bmc_io_wait(struct ipmi_softc *sc, int offset, u_int8_t mask, u_int8_t value,
-    const char *lbl)
+bmc_io_wait(struct ipmi_softc *sc)
 {
+	struct ipmi_iowait	*a = sc->sc_cmd_iowait;
 	volatile u_int8_t	v;
-	struct ipmi_bmc_args	args;
 
 	if (cold)
-		return (bmc_io_wait_cold(sc, offset, mask, value, lbl));
+		return (bmc_io_wait_cold(sc));
 
 	sc->sc_retries = 0;
 	sc->sc_wakeup = 1;
 
-	args.offset = offset;
-	args.mask = mask;
-	args.value = value;
-	args.v = &v;
-	sc->sc_iowait_args = &args;
+	a->v = &v;
 
 	_bmc_io_wait(sc);
 
 	while (sc->sc_wakeup)
-		tsleep(sc, PWAIT, lbl, 0);
+		tsleep(sc, PWAIT, a->lbl, 0);
 
 	if (sc->sc_retries > sc->sc_max_retries) {
 		dbg_printf(1, "%s: bmc_io_wait fails : v=%.2x m=%.2x "
-		    "b=%.2x %s\n", DEVNAME(sc), v, mask, value, lbl);
+		    "b=%.2x %s\n", DEVNAME(sc), v, a->mask, a->value, a->lbl);
 		return (-1);
 	}
 
@@ -332,22 +326,22 @@ bmc_io_wait(struct ipmi_softc *sc, int offset, u_int8_t mask, u_int8_t value,
 }
 
 int
-bmc_io_wait_cold(struct ipmi_softc *sc, int offset, u_int8_t mask,
-    u_int8_t value, const char *lbl)
+bmc_io_wait_cold(struct ipmi_softc *sc)
 {
+	struct ipmi_iowait	*a = sc->sc_cmd_iowait;
 	volatile u_int8_t	v;
 	int			count = 5000000; /* == 5s XXX can be shorter */
 
 	while (count--) {
-		v = bmc_read(sc, offset);
-		if ((v & mask) == value)
+		v = bmc_read(sc, a->offset);
+		if ((v & a->mask) == a->value)
 			return v;
 
 		delay(1);
 	}
 
 	dbg_printf(1, "%s: bmc_io_wait_cold fails : *v=%.2x m=%.2x b=%.2x %s\n",
-	    DEVNAME(sc), v, mask, value, lbl);
+	    DEVNAME(sc), v, a->mask, a->value, a->lbl);
 	return (-1);
 
 }
@@ -389,7 +383,13 @@ bt_read(struct ipmi_softc *sc, int reg)
 int
 bt_write(struct ipmi_softc *sc, int reg, uint8_t data)
 {
-	if (bmc_io_wait(sc, _BT_CTRL_REG, BT_BMC_BUSY, 0, "bt_write") < 0)
+	struct ipmi_iowait *a = sc->sc_cmd_iowait;
+
+	a->offset = _BT_CTRL_REG;
+	a->mask = BT_BMC_BUSY;
+	a->value = 0;
+	a->lbl = "bt_write";
+	if (bmc_io_wait(sc) < 0)
 		return (-1);
 
 	bmc_write(sc, reg, data);
@@ -400,6 +400,7 @@ int
 bt_sendmsg(struct ipmi_cmd *c)
 {
 	struct ipmi_softc *sc = c->c_sc;
+	struct ipmi_iowait *a = sc->sc_cmd_iowait;
 	int i;
 
 	bt_write(sc, _BT_CTRL_REG, BT_CLR_WR_PTR);
@@ -407,8 +408,11 @@ bt_sendmsg(struct ipmi_cmd *c)
 		bt_write(sc, _BT_DATAOUT_REG, sc->sc_buf[i]);
 
 	bt_write(sc, _BT_CTRL_REG, BT_HOST2BMC_ATN);
-	if (bmc_io_wait(sc, _BT_CTRL_REG, BT_HOST2BMC_ATN | BT_BMC_BUSY, 0,
-	    "bt_sendwait") < 0)
+	a->offset = _BT_CTRL_REG;
+	a->mask = BT_HOST2BMC_ATN | BT_BMC_BUSY;
+	a->value = 0;
+	a->lbl = "bt_sendwait";
+	if (bmc_io_wait(sc) < 0)
 		return (-1);
 
 	return (0);
@@ -418,10 +422,14 @@ int
 bt_recvmsg(struct ipmi_cmd *c)
 {
 	struct ipmi_softc *sc = c->c_sc;
+	struct ipmi_iowait *a = sc->sc_cmd_iowait;
 	u_int8_t len, v, i, j;
 
-	if (bmc_io_wait(sc, _BT_CTRL_REG, BT_BMC2HOST_ATN, BT_BMC2HOST_ATN,
-	    "bt_recvwait") < 0)
+	a->offset = _BT_CTRL_REG;
+	a->mask = BT_BMC2HOST_ATN;
+	a->value = BT_BMC2HOST_ATN;
+	a->lbl = "bt_recvwait";
+	if (bmc_io_wait(sc) < 0)
 		return (-1);
 
 	bt_write(sc, _BT_CTRL_REG, BT_HOST_BUSY);
@@ -512,10 +520,15 @@ int	smic_read_data(struct ipmi_softc *, u_int8_t *);
 int
 smic_wait(struct ipmi_softc *sc, u_int8_t mask, u_int8_t val, const char *lbl)
 {
+	struct ipmi_iowait *a = sc->sc_cmd_iowait;
 	int v;
 
 	/* Wait for expected flag bits */
-	v = bmc_io_wait(sc, _SMIC_FLAG_REG, mask, val, "smicwait");
+	a->offset = _SMIC_FLAG_REG;
+	a->mask = mask;
+	a->value = val;
+	a->lbl = "smicwait";
+	v = bmc_io_wait(sc);
 	if (v < 0)
 		return (-1);
 
@@ -666,9 +679,14 @@ int	kcs_read_data(struct ipmi_softc *, u_int8_t *);
 int
 kcs_wait(struct ipmi_softc *sc, u_int8_t mask, u_int8_t value, const char *lbl)
 {
+	struct ipmi_iowait *a = sc->sc_cmd_iowait;
 	int v;
 
-	v = bmc_io_wait(sc, _KCS_STATUS_REGISTER, mask, value, lbl);
+	a->offset = _KCS_STATUS_REGISTER;
+	a->mask = mask;
+	a->value = value;
+	a->lbl = lbl;
+	v = bmc_io_wait(sc);
 	if (v < 0)
 		return (v);
 
@@ -1091,14 +1109,18 @@ ipmi_cmd(struct ipmi_cmd *c)
 void
 ipmi_cmd_poll(struct ipmi_cmd *c)
 {
+	struct ipmi_iowait	iowait;
+
 	mtx_enter(&c->c_sc->sc_cmd_mtx);
 
 	c->c_sc->sc_cmd = c;
+	c->c_sc->sc_cmd_iowait = &iowait;
 	if (ipmi_sendcmd(c)) {
 		panic("%s: sendcmd fails", DEVNAME(c->c_sc));
 	}
 	c->c_ccode = ipmi_recvcmd(c);
 	c->c_sc->sc_cmd = NULL;
+	c->c_sc->sc_cmd_iowait = NULL;
 
 	mtx_leave(&c->c_sc->sc_cmd_mtx);
 }
@@ -1794,6 +1816,8 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 	sc->sc_max_retries = 50; /* 50 * 1/100 = 0.5 seconds max */
 	timeout_set(&sc->sc_timeout, _bmc_io_wait, sc);
 
+	sc->sc_cmd = NULL;
+	sc->sc_cmd_iowait = NULL;
 	sc->sc_cmd_taskq = taskq_create("ipmicmd", 1, IPL_NONE, TASKQ_MPSAFE);
 	mtx_init(&sc->sc_cmd_mtx, IPL_NONE);
 }
