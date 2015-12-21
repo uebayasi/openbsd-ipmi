@@ -117,6 +117,9 @@ struct ipmi_softc {
 
 	struct ipmi_ioctl {
 		struct rwlock		lock;
+		struct ipmi_req		req;
+		struct ipmi_cmd		cmd;
+		uint8_t			buf[IPMI_MAX_RX];
 	} sc_ioctl;
 
 	int			sc_wdog_period;
