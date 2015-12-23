@@ -1707,7 +1707,14 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 
 	rw_init(&sc->sc_ioctl.lock, DEVNAME(sc));
 	sc->sc_ioctl.req.msgid = -1;
+
 	c->c_sc = sc;
+	c->c_rssa = -1;
+	c->c_rslun = -1;
+	c->c_netfn = -1;
+	c->c_cmd = -1;
+	c->c_txlen = -1;
+	c->c_rxlen = -1;
 	c->c_ccode = -1;
 
 	sc->sc_cmd_taskq = taskq_create("ipmicmd", 1, IPL_NONE, TASKQ_MPSAFE);
@@ -1792,20 +1799,33 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 			goto reset;
 		}
 		sc->sc_ioctl.req = *req;
-		c->c_ccode = -1;
 		rc = copyin(req->msg.data, c->c_data, len);
 		if (rc != 0)
 			goto reset;
-		KASSERT(c->c_ccode == -1);
 
 		/* Execute a command synchronously. */
+		/* c_sc is constant */
+		/* c_rssa is set by IPMICTL_SET_MY_ADDRESS_CMD */
+		/* c_rslun is set by IPMICTL_SET_MY_LUN_CMD */
 		c->c_netfn = req->msg.netfn;
 		c->c_cmd = req->msg.cmd;
 		c->c_txlen = req->msg.data_len;
+		/* c_maxrxlen is constant */
 		c->c_rxlen = 0;
+		/* c_data is constant */
+		c->c_ccode = -1;
 		ipmi_cmd(c);
 
-		KASSERT(c->c_ccode != -1);
+		/* c_sc is constant */
+		/* c_rssa is set by IPMICTL_SET_MY_ADDRESS_CMD */
+		/* c_rslun is set by IPMICTL_SET_MY_LUN_CMD */
+		c->c_netfn = -1;
+		c->c_cmd = -1;
+		c->c_txlen = -1;
+		/* c_maxrxlen is constant */
+		/* c_rxlen is saved for IPMICTL_RECEIVE_MSG */
+		/* c_data is constant */
+		/* c_ccode is saved for IPMICTL_RECEIVE_MSG */
 		break;
 	case IPMICTL_RECEIVE_MSG_TRUNC:
 	case IPMICTL_RECEIVE_MSG:
@@ -1867,7 +1887,18 @@ done:
 	return (rc);
 reset:
 	sc->sc_ioctl.req.msgid = -1;
+
+	/* c_sc is constant */
+	/* c_rssa is set by IPMICTL_SET_MY_ADDRESS_CMD */
+	/* c_rslun is set by IPMICTL_SET_MY_LUN_CMD */
+	c->c_netfn = -1;
+	c->c_cmd = -1;
+	c->c_txlen = -1;
+	/* c_maxrxlen is constant */
+	c->c_rxlen = -1;
+	/* c_data is constant */
 	c->c_ccode = -1;
+
 	goto done;
 }
 
