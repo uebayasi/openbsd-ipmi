@@ -56,7 +56,6 @@ struct ipmi_sensor {
 };
 
 int	ipmi_nintr;
-int	ipmi_poll = 1;
 int	ipmi_enabled = 0;
 
 #define SENSOR_REFRESH_RATE (5 * hz)
@@ -1520,9 +1519,6 @@ ipmi_intr(void *arg)
 void
 ipmi_refresh_sensors(struct ipmi_softc *sc)
 {
-	if (!ipmi_poll)
-		return;
-
 	if (SLIST_EMPTY(&ipmi_sensor_list))
 		return;
 
