@@ -114,6 +114,8 @@ struct ipmi_thread {
 	volatile int	    running;
 };
 
+#define IPMI_WDOG_DONTSTOP	0x40
+
 #define IPMI_WDOG_MASK		0x03
 #define IPMI_WDOG_DISABLED	0x00
 #define IPMI_WDOG_REBOOT	0x01
