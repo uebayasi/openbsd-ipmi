@@ -1,4 +1,4 @@
-/*	$OpenBSD$ */
+/*	$OpenBSD: ipmi.c,v 1.90 2016/01/12 10:44:32 uebayasi Exp $ */
 
 /*
  * Copyright (c) 2005 Jordan Hargrave

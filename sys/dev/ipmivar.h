@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $OpenBSD: ipmivar.h,v 1.27 2016/01/12 10:44:32 uebayasi Exp $ */
 
 /*
  * Copyright (c) 2005 Jordan Hargrave
