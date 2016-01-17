@@ -1139,7 +1139,7 @@ get_sdr_partial(struct ipmi_softc *sc, u_int16_t recordId, u_int16_t reserveId,
 	c.c_rslun = BMC_LUN;
 	c.c_netfn = STORAGE_NETFN;
 	c.c_cmd = STORAGE_GET_SDR;
-	c.c_txlen = 6;
+	c.c_txlen = IPMI_SET_WDOG_MAX;
 	c.c_rxlen = 0;
 	ipmi_cmd(&c);
 	len = c.c_rxlen;
