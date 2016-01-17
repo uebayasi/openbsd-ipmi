@@ -524,6 +524,8 @@ __devitem(gpr, gpr*, GPR400 smartcard reader)dnl
 _mcdev(gpr, gpr*, gpr, {-major_gpr_c-})dnl
 __devitem(hotplug, hotplug, devices hot plugging)dnl
 _mkdev(hotplug, hotplug, {-M hotplug c major_hotplug_c $U 400-})dnl
+__devitem(ipmi, ipmi*, IPMI BMC access)dnl
+_mkdev(ipmi, ipmi*, {-M ipmi$U c major_ipmi_c $U 600-})dnl
 __devitem(gpio, gpio*, General Purpose Input/Output)dnl
 _mcdev(gpio, gpio*, gpio, {-major_gpio_c-}, 600)dnl
 __devitem(vmm, vmm, Virtual Machine Monitor)dnl
