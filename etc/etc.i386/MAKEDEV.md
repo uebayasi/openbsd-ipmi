@@ -76,6 +76,7 @@ _DEV(fuse, 93)
 _DEV(gpio, 83)
 _DEV(gpr, 80)
 _DEV(hotplug, 82)
+_DEV(ipmi, 96)
 _DEV(joy, 26)
 _DEV(nvram, 84)
 _DEV(pci, 72)
@@ -135,4 +136,5 @@ target(all, gpio, 0, 1, 2)dnl
 target(all, nvram)dnl
 target(all, drm, 0, 1, 2, 3)dnl
 target(all, amdmsr)dnl
+target(all, ipmi, 0)dnl
 twrget(ramd, wsdisp, ttyC, 0)dnl
