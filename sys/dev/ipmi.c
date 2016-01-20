@@ -1779,7 +1779,7 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 	switch (cmd) {
 	case IPMICTL_SEND_COMMAND:
 		if (req->msgid == -1) {
-			rc = EINVAL; // XXX
+			rc = EINVAL;
 			goto reset;
 		}
 		if (sc->sc_ioctl.req.msgid != -1) {
@@ -1787,8 +1787,12 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 			goto reset;
 		}
 		len = req->msg.data_len;
+		if (len < 0) {
+			rc = EINVAL;
+			goto reset;
+		}
 		if (len > c->c_maxrxlen) {
-			rc = E2BIG; // XXX
+			rc = E2BIG;
 			goto reset;
 		}
 		sc->sc_ioctl.req = *req;
