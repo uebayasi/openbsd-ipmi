@@ -1850,11 +1850,8 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 		break;
 	case IPMICTL_SET_GETS_EVENTS_CMD:
 		break;
-	case IPMICTL_REGISTER_FOR_CMD:
-	case IPMICTL_UNREGISTER_FOR_CMD:
-		rc = EOPNOTSUPP;
-		goto done;
 	default:
+		rc = EOPNOTSUPP;
 		break;
 	}
 done:
