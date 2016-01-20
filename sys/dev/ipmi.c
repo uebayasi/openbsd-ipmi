@@ -1771,24 +1771,12 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 	if (sc == NULL)
 		return (ENXIO);
 
-#ifdef IPMICTL_SEND_COMMAND_32
-	switch (cmd) {
-	case IPMICTL_SEND_COMMAND_32:
-	case IPMICTL_RECEIVE_MSG_TRUNC_32:
-	case IPMICTL_RECEIVE_MSG_32:
-		break;
-	}
-#endif
-
 	rw_enter_write(&sc->sc_ioctl.lock);
 
 	c->c_maxrxlen = sizeof(sc->sc_ioctl.buf);
 	c->c_data = sc->sc_ioctl.buf;
 
 	switch (cmd) {
-#ifdef IPMICTL_SEND_COMMAND_32
-	case IPMICTL_SEND_COMMAND_32:
-#endif
 	case IPMICTL_SEND_COMMAND:
 		if (req->msgid == -1) {
 			rc = EINVAL; // XXX
@@ -1832,10 +1820,6 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 		/* c_data is constant */
 		/* c_ccode is saved for IPMICTL_RECEIVE_MSG */
 		break;
-#ifdef IPMICTL_SEND_COMMAND_32
-	case IPMICTL_RECEIVE_MSG_TRUNC_32:
-	case IPMICTL_RECEIVE_MSG_32:
-#endif
 	case IPMICTL_RECEIVE_MSG_TRUNC:
 	case IPMICTL_RECEIVE_MSG:
 		if (sc->sc_ioctl.req.msgid == -1) {
