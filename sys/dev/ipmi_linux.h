@@ -26,8 +26,8 @@
  * $FreeBSD$
  */
 
-#ifndef __SYS_IPMI_H__
-#define	__SYS_IPMI_H__
+#ifndef __IPMI_LINUX_H__
+#define	__IPMI_LINUX_H__
 
 #define IPMI_MAX_ADDR_SIZE		0x20
 #define IPMI_MAX_RX			1024
@@ -120,4 +120,4 @@ struct ipmi_ipmb_addr {
 	unsigned char	lun;
 };
 
-#endif	/* !__SYS_IPMI_H__ */
+#endif	/* !__IPMI_LINUX_H__ */
