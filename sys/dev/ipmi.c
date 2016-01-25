@@ -46,7 +46,7 @@
 #include <dev/isa/isavar.h>
 
 #include <dev/ipmivar.h>
-#include <dev/ipmi_linux.h>
+#include <dev/ipmi.h>
 
 struct ipmi_sensor {
 	u_int8_t	*i_sdr;
