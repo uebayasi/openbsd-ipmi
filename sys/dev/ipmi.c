@@ -1732,12 +1732,20 @@ ipmilookup(dev_t dev)
 int
 ipmiopen(dev_t dev, int flags, int mode, struct proc *p)
 {
+	struct ipmi_softc	*sc = ipmilookup(dev);
+
+	if (sc == NULL)
+		return (ENXIO);
 	return (0);
 }
 
 int
 ipmiclose(dev_t dev, int flags, int mode, struct proc *p)
 {
+	struct ipmi_softc	*sc = ipmilookup(dev);
+
+	if (sc == NULL)
+		return (ENXIO);
 	return (0);
 }
 
