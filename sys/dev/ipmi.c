@@ -1808,6 +1808,8 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 		}
 		ccode = c->c_ccode & 0xff;
 		rc = copyout(&ccode, recv->msg.data, 1);
+		if (rc != 0)
+			goto reset;
 
 		/* Return a command result. */
 		recv->recv_type = IPMI_RESPONSE_RECV_TYPE;
@@ -1817,7 +1819,9 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 		recv->msg.data_len = c->c_rxlen + 1;
 
 		rc = copyout(c->c_data, recv->msg.data + 1, c->c_rxlen);
-		goto reset;
+		if (rc != 0)
+			goto reset;
+		break;
 	case IPMICTL_SET_MY_ADDRESS_CMD:
 		iv = *(int *)data;
 		if (iv < 0 || iv > RSSA_MASK) {
