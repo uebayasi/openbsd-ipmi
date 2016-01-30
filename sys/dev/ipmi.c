@@ -1808,6 +1808,8 @@ ipmiioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *proc)
 		}
 		ccode = c->c_ccode & 0xff;
 		rc = copyout(&ccode, recv->msg.data, 1);
+		if (rc != 0)
+			goto reset;
 
 		/* Return a command result. */
 		recv->recv_type = IPMI_RESPONSE_RECV_TYPE;
