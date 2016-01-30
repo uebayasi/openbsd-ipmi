@@ -749,6 +749,8 @@ kcs_probe(struct ipmi_softc *sc)
 	u_int8_t v;
 
 	v = bmc_read(sc, _KCS_STATUS_REGISTER);
+	if ((v & KCS_STATE_MASK) == KCS_ERROR_STATE)
+		return (1);
 #if 0
 	printf("kcs_probe: %2x\n", v);
 	printf(" STS: %2x\n", v & KCS_STATE_MASK);
