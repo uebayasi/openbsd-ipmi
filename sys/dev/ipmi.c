@@ -178,7 +178,7 @@ void	ipmi_sensor_name(char *, int, u_int8_t, u_int8_t *);
 /* BMC Helper Functions */
 u_int8_t bmc_read(struct ipmi_softc *, int);
 void	bmc_write(struct ipmi_softc *, int, u_int8_t);
-int	bmc_io_wait(struct ipmi_softc *);
+int	bmc_io_wait(struct ipmi_softc *, struct ipmi_iowait *);
 
 void	bt_buildmsg(struct ipmi_cmd *);
 void	cmn_buildmsg(struct ipmi_cmd *);
@@ -270,9 +270,8 @@ bmc_write(struct ipmi_softc *sc, int offset, u_int8_t val)
 }
 
 int
-bmc_io_wait(struct ipmi_softc *sc)
+bmc_io_wait(struct ipmi_softc *sc, struct ipmi_iowait *a)
 {
-	struct ipmi_iowait	*a = sc->sc_cmd_iowait;
 	volatile u_int8_t	v;
 	int			count = 5000000; /* == 5s XXX can be shorter */
 
@@ -329,13 +328,13 @@ bt_read(struct ipmi_softc *sc, int reg)
 int
 bt_write(struct ipmi_softc *sc, int reg, uint8_t data)
 {
-	struct ipmi_iowait *a = sc->sc_cmd_iowait;
+	struct ipmi_iowait a;
 
-	a->offset = _BT_CTRL_REG;
-	a->mask = BT_BMC_BUSY;
-	a->value = 0;
-	a->lbl = "bt_write";
-	if (bmc_io_wait(sc) < 0)
+	a.offset = _BT_CTRL_REG;
+	a.mask = BT_BMC_BUSY;
+	a.value = 0;
+	a.lbl = "bt_write";
+	if (bmc_io_wait(sc, &a) < 0)
 		return (-1);
 
 	bmc_write(sc, reg, data);
@@ -346,7 +345,7 @@ int
 bt_sendmsg(struct ipmi_cmd *c)
 {
 	struct ipmi_softc *sc = c->c_sc;
-	struct ipmi_iowait *a = sc->sc_cmd_iowait;
+	struct ipmi_iowait a;
 	int i;
 
 	bt_write(sc, _BT_CTRL_REG, BT_CLR_WR_PTR);
@@ -354,11 +353,11 @@ bt_sendmsg(struct ipmi_cmd *c)
 		bt_write(sc, _BT_DATAOUT_REG, sc->sc_buf[i]);
 
 	bt_write(sc, _BT_CTRL_REG, BT_HOST2BMC_ATN);
-	a->offset = _BT_CTRL_REG;
-	a->mask = BT_HOST2BMC_ATN | BT_BMC_BUSY;
-	a->value = 0;
-	a->lbl = "bt_sendwait";
-	if (bmc_io_wait(sc) < 0)
+	a.offset = _BT_CTRL_REG;
+	a.mask = BT_HOST2BMC_ATN | BT_BMC_BUSY;
+	a.value = 0;
+	a.lbl = "bt_sendwait";
+	if (bmc_io_wait(sc, &a) < 0)
 		return (-1);
 
 	return (0);
@@ -368,14 +367,14 @@ int
 bt_recvmsg(struct ipmi_cmd *c)
 {
 	struct ipmi_softc *sc = c->c_sc;
-	struct ipmi_iowait *a = sc->sc_cmd_iowait;
+	struct ipmi_iowait a;
 	u_int8_t len, v, i, j;
 
-	a->offset = _BT_CTRL_REG;
-	a->mask = BT_BMC2HOST_ATN;
-	a->value = BT_BMC2HOST_ATN;
-	a->lbl = "bt_recvwait";
-	if (bmc_io_wait(sc) < 0)
+	a.offset = _BT_CTRL_REG;
+	a.mask = BT_BMC2HOST_ATN;
+	a.value = BT_BMC2HOST_ATN;
+	a.lbl = "bt_recvwait";
+	if (bmc_io_wait(sc, &a) < 0)
 		return (-1);
 
 	bt_write(sc, _BT_CTRL_REG, BT_HOST_BUSY);
@@ -466,15 +465,15 @@ int	smic_read_data(struct ipmi_softc *, u_int8_t *);
 int
 smic_wait(struct ipmi_softc *sc, u_int8_t mask, u_int8_t val, const char *lbl)
 {
-	struct ipmi_iowait *a = sc->sc_cmd_iowait;
+	struct ipmi_iowait a;
 	int v;
 
 	/* Wait for expected flag bits */
-	a->offset = _SMIC_FLAG_REG;
-	a->mask = mask;
-	a->value = val;
-	a->lbl = "smicwait";
-	v = bmc_io_wait(sc);
+	a.offset = _SMIC_FLAG_REG;
+	a.mask = mask;
+	a.value = val;
+	a.lbl = "smicwait";
+	v = bmc_io_wait(sc, &a);
 	if (v < 0)
 		return (-1);
 
@@ -625,14 +624,14 @@ int	kcs_read_data(struct ipmi_softc *, u_int8_t *);
 int
 kcs_wait(struct ipmi_softc *sc, u_int8_t mask, u_int8_t value, const char *lbl)
 {
-	struct ipmi_iowait *a = sc->sc_cmd_iowait;
+	struct ipmi_iowait a;
 	int v;
 
-	a->offset = _KCS_STATUS_REGISTER;
-	a->mask = mask;
-	a->value = value;
-	a->lbl = lbl;
-	v = bmc_io_wait(sc);
+	a.offset = _KCS_STATUS_REGISTER;
+	a.mask = mask;
+	a.value = value;
+	a.lbl = lbl;
+	v = bmc_io_wait(sc, &a);
 	if (v < 0)
 		return (v);
 
@@ -1040,18 +1039,14 @@ ipmi_cmd(struct ipmi_cmd *c)
 void
 ipmi_cmd_poll(struct ipmi_cmd *c)
 {
-	struct ipmi_iowait	iowait;
-
 	mtx_enter(&c->c_sc->sc_cmd_mtx);
 
 	c->c_sc->sc_cmd = c;
-	c->c_sc->sc_cmd_iowait = &iowait;
 	if (ipmi_sendcmd(c)) {
 		panic("%s: sendcmd fails", DEVNAME(c->c_sc));
 	}
 	c->c_ccode = ipmi_recvcmd(c);
 	c->c_sc->sc_cmd = NULL;
-	c->c_sc->sc_cmd_iowait = NULL;
 
 	mtx_leave(&c->c_sc->sc_cmd_mtx);
 }
@@ -1735,7 +1730,6 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 	c->c_ccode = -1;
 
 	sc->sc_cmd = NULL;
-	sc->sc_cmd_iowait = NULL;
 	sc->sc_cmd_taskq = taskq_create("ipmicmd", 1, IPL_NONE, TASKQ_MPSAFE);
 	mtx_init(&sc->sc_cmd_mtx, IPL_NONE);
 }
