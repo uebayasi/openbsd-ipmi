@@ -1053,12 +1053,10 @@ ipmi_cmd_poll(struct ipmi_cmd *c)
 {
 	mtx_enter(&c->c_sc->sc_cmd_mtx);
 
-	c->c_sc->sc_cmd = c;
 	if (ipmi_sendcmd(c)) {
 		panic("%s: sendcmd fails", DEVNAME(c->c_sc));
 	}
 	c->c_ccode = ipmi_recvcmd(c);
-	c->c_sc->sc_cmd = NULL;
 
 	mtx_leave(&c->c_sc->sc_cmd_mtx);
 }
@@ -1748,7 +1746,6 @@ ipmi_attach(struct device *parent, struct device *self, void *aux)
 	c->c_sc = sc;
 	c->c_ccode = -1;
 
-	sc->sc_cmd = NULL;
 	sc->sc_cmd_taskq = taskq_create("ipmicmd", 1, IPL_NONE, TASKQ_MPSAFE);
 	mtx_init(&sc->sc_cmd_mtx, IPL_NONE);
 }
